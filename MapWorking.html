@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>World Map with All Countries Highlighted</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    .info {
+      padding: 6px 8px;
+      font: 14px/16px Arial, sans-serif;
+      background: white;
+      background: rgba(255,255,255,0.8);
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      border-radius: 5px;
+    }
+    .info h4 {
+      margin: 0 0 5px;
+      color: #777;
+    }
+    .legend {
+      line-height: 18px;
+      color: #555;
+    }
+    .legend i {
+      width: 18px;
+      height: 18px;
+      float: left;
+      margin-right: 8px;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <script src="https://unpkg.com/leaflet-ajax/dist/leaflet.ajax.min.js"></script>
+  <script>
+    // Initialize map centered on the world
+    var map = L.map('map').setView([20, 0], 2);
+
+    // CARTO Light basemap with English labels
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 19
+    }).addTo(map);
+
+    // Add geocoder (search bar)
+    var geocoder = L.Control.geocoder({
+      defaultMarkGeocode: false
+    })
+    .on('markgeocode', function(e) {
+      var bbox = e.geocode.bbox;
+      var poly = L.polygon([
+        bbox.getSouthEast(),
+        bbox.getNorthEast(),
+        bbox.getNorthWest(),
+        bbox.getSouthWest()
+      ]).addTo(map);
+      map.fitBounds(poly.getBounds());
+    })
+    .addTo(map);
+
+    // Function to generate random colors
+    function getRandomColor() {
+      const letters = '0123456789ABCDEF';
+      let color = '#';
+      for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+      }
+      return color;
+    }
+
+    // Function to highlight all countries
+    function highlightAllCountries() {
+      fetch(`https://geojson.xyz/naturalearth-3.3.0/ne_50m_admin_0_countries.geojson`)
+        .then(response => response.json())
+        .then(data => {
+          L.geoJSON(data, {
+            style: function(feature) {
+              // Special colors for specific countries
+              const specialCountries = {
+                'PK': '#046A38', // Pakistan 🇵🇰
+                'CN': '#DE2910', // China 🇨🇳
+                'TR': '#E30A17', // Turkey 🇹🇷
+                'SA': '#245C36', // Saudi Arabia 🇸🇦
+                'PS': '#2ecc71', // Palestine 🇵🇸
+                'US': '#3C3B6E', // United States (USA) 🇺🇸
+                'MY': '#006847', // Malaysia 🇲🇾
+                'RU': '#0039A6', // Russia 🇷🇺
+                'IN': '#FF9933', // India 🇮🇳
+                'IR': '#239F40'  // Iran 🇮🇷
+              };
+              
+              const countryCode = feature.properties.iso_a2;
+              return {
+                fillColor: specialCountries[countryCode] || getRandomColor(),
+                weight: 1,
+                opacity: 1,
+                color: 'white',
+                fillOpacity: 0.7
+              };
+            },
+            onEachFeature: function(feature, layer) {
+              // Add flags to country names in popup
+              const flags = {
+                'PK': '🇵🇰',
+                'CN': '🇨🇳',
+                'TR': '🇹🇷',
+                'SA': '🇸🇦',
+                'PS': '🇵🇸',
+                'US': '🇺🇸',
+                'MY': '🇲🇾',
+                'RU': '🇷🇺',
+                'IN': '🇮🇳',
+                'IR': '🇮🇷'
+              };
+              const flag = flags[feature.properties.iso_a2] || '';
+              layer.bindPopup(`<b>${feature.properties.name} ${flag}</b><br>ISO Code: ${feature.properties.iso_a2}`);
+            }
+          }).addTo(map);
+        })
+        .catch(error => console.error('Error loading GeoJSON:', error));
+    }
+
+    // Highlight all countries
+    highlightAllCountries();
+
+    // Add legend for special countries
+    var legend = L.control({position: 'bottomright'});
+
+    legend.onAdd = function (map) {
+      var div = L.DomUtil.create('div', 'info legend');
+      div.innerHTML = 
+        '<h4>Special Countries</h4>' +
+        '<i style="background:#046A38"></i> Pakistan 🇵🇰<br>' +
+        '<i style="background:#DE2910"></i> China 🇨🇳<br>' +
+        '<i style="background:#E30A17"></i> Turkey 🇹🇷<br>' +
+        '<i style="background:#245C36"></i> Saudi Arabia 🇸🇦<br>' +
+        '<i style="background:#2ecc71"></i> Palestine 🇵🇸<br>' +
+        '<i style="background:#3C3B6E"></i> United States 🇺🇸<br>' +
+        '<i style="background:#006847"></i> Malaysia 🇲🇾<br>' +
+        '<i style="background:#0039A6"></i> Russia 🇷🇺<br>' +
+        '<i style="background:#FF9933"></i> India 🇮🇳<br>' +
+        '<i style="background:#239F40"></i> Iran 🇮🇷<br>' +
+        '<hr>' +
+        '<small>Other countries have random colors</small>';
+      return div;
+    };
+
+    legend.addTo(map);
+
+    // Custom search entries for all countries
+    L.Control.geocoder().options.geocoder = L.Control.Geocoder.nominatim();
+  </script>
+
+</body>
+</html>
